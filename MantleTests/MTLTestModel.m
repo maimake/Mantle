@@ -240,6 +240,15 @@ static NSUInteger modelVersion = 1;
 	return [NSDictionary mtl_identityPropertyMapWithModel:self];
 }
 
++(NSArray*)RequiredJSONKeyPaths
+{
+	return @[
+			 @"flag",
+//			 @"flag2",
+			 ];
+}
+
+
 @end
 
 @implementation MTLStringModel

@@ -283,6 +283,19 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 			return [otherAdapter modelFromJSONDictionary:JSONDictionary error:error];
 		}
 	}
+	
+
+	//判断是否有必要的keyPath
+	if ([self.modelClass respondsToSelector:@selector(RequiredJSONKeyPaths)]) {
+		
+		NSArray* requiredPaths = [self.modelClass RequiredJSONKeyPaths];
+		
+		for (NSString* keyPath in requiredPaths) {
+			id value = [JSONDictionary valueForKeyPath:keyPath];
+			NSAssert(value != nil, @"model:%@ required path:%@", NSStringFromClass(self.modelClass), keyPath);
+		}
+	}
+	
 
 	NSMutableDictionary *dictionaryValue = [[NSMutableDictionary alloc] initWithCapacity:JSONDictionary.count];
 

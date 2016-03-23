@@ -50,6 +50,12 @@
 /// (as strings or arrays of strings).
 + (NSDictionary *)JSONKeyPathsByPropertyKey;
 
+
+@optional
+//哪些KeyPath是必填的
+//如果不实现这个方法就不检查
++ (NSArray*)RequiredJSONKeyPaths;
+
 @optional
 
 /// Specifies how to convert a JSON value to the given property key. If
