@@ -257,6 +257,8 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 }
 
 - (id)modelFromJSONDictionary:(NSDictionary *)JSONDictionary error:(NSError **)error {
+	
+	//先判断是否要转其它Model解析器，如转子类解释
 	if ([self.modelClass respondsToSelector:@selector(classForParsingJSONDictionary:)]) {
 		Class class = [self.modelClass classForParsingJSONDictionary:JSONDictionary];
 		if (class == nil) {
@@ -273,6 +275,7 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 		}
 
 		if (class != self.modelClass) {
+			//取其它Model解析器
 			NSAssert([class conformsToProtocol:@protocol(MTLJSONSerializing)], @"Class %@ returned from +classForParsingJSONDictionary: does not conform to <MTLJSONSerializing>", class);
 
 			MTLJSONAdapter *otherAdapter = [self JSONAdapterForModelClass:class error:error];
@@ -283,6 +286,13 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 
 	NSMutableDictionary *dictionaryValue = [[NSMutableDictionary alloc] initWithCapacity:JSONDictionary.count];
 
+//	1.取非只读的@property
+//	2.通过KeyPath取对应的JSON值，如果KeyPath是一个数组，则组装成字典值
+//	3.取出Transfomer，转换值为对象
+//	4.新建一个model对象，把字典传入初始化
+//	5.调用[model validate]看是否有效，如果没有效，就返回nil出去
+	
+	
 	for (NSString *propertyKey in [self.modelClass propertyKeys]) {
 		id JSONKeyPaths = self.JSONKeyPathsByPropertyKey[propertyKey];
 
@@ -296,9 +306,12 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 			for (NSString *keyPath in JSONKeyPaths) {
 				BOOL success = NO;
 				id value = [JSONDictionary mtl_valueForJSONKeyPath:keyPath success:&success error:error];
-
-				if (!success) return nil;
-
+				
+				if (!success) {
+					//KeyPath没有对应的值
+					return nil;
+				}
+				
 				if (value != nil) dictionary[keyPath] = value;
 			}
 
@@ -307,7 +320,10 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 			BOOL success = NO;
 			value = [JSONDictionary mtl_valueForJSONKeyPath:JSONKeyPaths success:&success error:error];
 
-			if (!success) return nil;
+			if (!success) {
+				//KeyPath没有对应的值
+				return nil;
+			}
 		}
 
 		if (value == nil) continue;
@@ -323,14 +339,29 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 					id<MTLTransformerErrorHandling> errorHandlingTransformer = (id)transformer;
 
 					BOOL success = YES;
-					value = [errorHandlingTransformer transformedValue:value success:&success error:error];
+					NSError* tmpError = nil;
+					value = [errorHandlingTransformer transformedValue:value success:&success error:&tmpError];
 
-					if (!success) return nil;
+					if (!success)
+					{
+						if (error) {
+							//需要传error出去的不报错
+							*error = tmpError;
+							//如果转换失败，这里直接就退出了，把error带出去，却没有报错
+							return nil;
+						}else{
+							//不传error出去的要报错
+							@throw [NSException exceptionWithName:@"MTLModel transform value failed" reason:[tmpError description] userInfo:nil];
+						}
+					}
 				} else {
 					value = [transformer transformedValue:value];
 				}
 
-				if (value == nil) value = NSNull.null;
+				if (value == nil)
+				{
+					value = NSNull.null;
+				}
 			}
 
 			dictionaryValue[propertyKey] = value;
