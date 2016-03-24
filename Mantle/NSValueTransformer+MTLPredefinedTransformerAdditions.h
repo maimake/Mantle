@@ -21,6 +21,8 @@ extern NSString * const MTLURLValueTransformerName;
 /// though very much an implementation detail, is detected and serialized as a
 /// proper boolean.
 extern NSString * const MTLBooleanValueTransformerName;
+extern NSString * const MTLNumberValueTransformerName;
+extern NSString * const MTLStringValueTransformerName;
 
 @interface NSValueTransformer (MTLPredefinedTransformerAdditions)
 

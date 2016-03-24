@@ -213,3 +213,25 @@ extern const NSInteger MTLTestModelNameMissing;
 @property (readwrite, nonatomic, strong) NSString *property;
 
 @end
+
+
+
+@interface MTLNumStrModel : MTLModel<MTLJSONSerializing>
+
+@property (nonatomic, copy) NSString* numString;
+@property (nonatomic, copy) NSNumber* strNumber;
+@property (nonatomic, assign) float realNum;
+@property (nonatomic, assign) int intNum;
+@property (nonatomic, assign) double doubleNum;
+@property (nonatomic, assign) bool boolNum;
+
+@end
+
+
+@interface MTLAdjustModel : MTLModel <MTLJSONSerializing>
+
+@property (nonatomic, copy) NSString * name;
+
+@end
+
+

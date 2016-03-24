@@ -15,3 +15,8 @@
 @property (readwrite, nonatomic, strong) NSSet *ignoredPropertyKeys;
 
 @end
+
+
+@interface MTLJSONAdapter (custom)
+
+@end

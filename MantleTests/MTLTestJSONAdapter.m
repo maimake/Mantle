@@ -7,6 +7,7 @@
 //
 
 #import "MTLTestJSONAdapter.h"
+#import "MTLTestModel.h"
 
 @implementation MTLTestJSONAdapter
 
@@ -23,6 +24,27 @@
 	return [dictionary mtl_dictionaryByAddingEntriesFromDictionary:@{
 		@"test": @YES
 	}];
+}
+
+
+@end
+
+@implementation MTLJSONAdapter (custom)
+
+
++(NSValueTransformer *)defaultTransformerForClass:(Class)modelClass propertyType:(const char *)propertyType propertyKey:(NSString *)propertyKey
+{
+	NSLog(@"xxxxx [%@ %@] %s", NSStringFromClass(modelClass), propertyKey, propertyType);
+	
+	return nil;
+}
+
++(NSDictionary *)adjustJSONDictionary:(NSDictionary *)JSONDictionary beforeToModelClass:(Class)modelClass
+{
+	if ([modelClass isSubclassOfClass:MTLAdjustModel.class]) {
+		JSONDictionary = @{@"name": @"Changed"};
+	}
+	return JSONDictionary;
 }
 
 @end

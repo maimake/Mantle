@@ -71,6 +71,18 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 
 @implementation MTLJSONAdapter
 
+
++(BOOL)stringNumberCompatible
+{
+	NSNumber* val = objc_getAssociatedObject(self, @selector(stringNumberCompatible));
+	return val.boolValue;
+}
+
++(void)setStringNumberCompatible:(BOOL)compatible
+{
+	objc_setAssociatedObject(self, @selector(stringNumberCompatible), @(compatible), OBJC_ASSOCIATION_RETAIN);
+}
+
 #pragma mark Convenience methods
 
 + (id)modelOfClass:(Class)modelClass fromJSONDictionary:(NSDictionary *)JSONDictionary error:(NSError **)error {
@@ -258,6 +270,11 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 
 - (id)modelFromJSONDictionary:(NSDictionary *)JSONDictionary error:(NSError **)error {
 	
+	//先微调JSONDictionary
+	if ([self.class respondsToSelector:@selector(adjustJSONDictionary:beforeToModelClass:)]) {
+		JSONDictionary = [self.class adjustJSONDictionary:JSONDictionary beforeToModelClass:self.modelClass];
+	}
+	
 	//先判断是否要转其它Model解析器，如转子类解释
 	if ([self.modelClass respondsToSelector:@selector(classForParsingJSONDictionary:)]) {
 		Class class = [self.modelClass classForParsingJSONDictionary:JSONDictionary];
@@ -411,8 +428,10 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 	NSParameterAssert([modelClass conformsToProtocol:@protocol(MTLJSONSerializing)]);
 
 	NSMutableDictionary *result = [NSMutableDictionary dictionary];
-
+	
 	for (NSString *key in [modelClass propertyKeys]) {
+		
+		//modelClass里是否有该"属性"的转换器 [modelClass xxxxJSONTransformer]
 		SEL selector = MTLSelectorWithKeyPattern(key, "JSONTransformer");
 		if ([modelClass respondsToSelector:selector]) {
 			IMP imp = [modelClass methodForSelector:selector];
@@ -424,6 +443,7 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 			continue;
 		}
 
+		//modelClass里是否有[modelClass JSONTransformerForKey:]转换
 		if ([modelClass respondsToSelector:@selector(JSONTransformerForKey:)]) {
 			NSValueTransformer *transformer = [modelClass JSONTransformerForKey:key];
 
@@ -444,29 +464,97 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 
 		NSValueTransformer *transformer = nil;
 
+		
+		Class propertyClass = attributes->objectClass;
+		
 		if (*(attributes->type) == *(@encode(id))) {
-			Class propertyClass = attributes->objectClass;
 
 			if (propertyClass != nil) {
+				//查看有没有该属性“类型”的转换器 [MTLJSONAdpater xxxxJSONTransformer]
 				transformer = [self transformerForModelPropertiesOfClass:propertyClass];
 			}
 
-
 			// For user-defined MTLModel, try parse it with dictionaryTransformer.
 			if (nil == transformer && [propertyClass conformsToProtocol:@protocol(MTLJSONSerializing)]) {
+				//如果该属性的”类型“是另一个MTLModel，则创建一个adpater来转换
 				transformer = [self dictionaryTransformerWithModelClass:propertyClass];
 			}
-			
-			if (transformer == nil) transformer = [NSValueTransformer mtl_validatingTransformerForClass:propertyClass ?: NSObject.class];
-		} else {
-			transformer = [self transformerForModelPropertiesOfObjCType:attributes->type] ?: [NSValueTransformer mtl_validatingTransformerForClass:NSValue.class];
 		}
-
-		if (transformer != nil) result[key] = transformer;
+		
+		//全局定义的transformer
+		if (!transformer && [self respondsToSelector:@selector(defaultTransformerForClass:propertyType:propertyKey:)]) {
+			transformer = [self defaultTransformerForClass:modelClass propertyType:attributes->type propertyKey:NSStringFromSelector(attributes->getter)];
+		}
+		
+		if (!transformer) {
+			//还是没有
+			transformer = [self fallbackTransformerForModelProperties:attributes];
+		}
+		
+		if (transformer) {
+			result[key] = transformer;
+		}
 	}
 
 	return result;
 }
+
+
++(NSValueTransformer*)fallbackTransformerForModelProperties:(mtl_propertyAttributes*)attributes
+{
+	NSValueTransformer* transformer = nil;
+	
+	Class propertyClass = attributes->objectClass;
+	const char* propertyType = attributes->type;
+	
+	if ([self stringNumberCompatible]) {
+		
+		if (strstr(propertyType, "@")) {
+			//对象类型的
+			
+			if (strcmp(propertyType, "@\"NSString\"") == 0) {
+				//字符串类型
+				return [NSValueTransformer valueTransformerForName:MTLStringValueTransformerName];
+			}
+			
+			if (strcmp(propertyType, "@\"NSNumber\"") == 0) {
+				//数字类型
+				return [NSValueTransformer valueTransformerForName:MTLNumberValueTransformerName];
+			}
+			
+		}else{
+			
+			//值类型
+			if (strcasecmp(propertyType, @encode(BOOL)) == 0 ||
+				strcasecmp(propertyType, @encode(char)) == 0 ||
+				strcasecmp(propertyType, @encode(int)) == 0 ||
+				strcasecmp(propertyType, @encode(short)) == 0 ||
+				strcasecmp(propertyType, @encode(long)) == 0 ||
+				strcasecmp(propertyType, @encode(long long)) == 0 ||
+				strcasecmp(propertyType, @encode(double)) == 0 ||
+				strcasecmp(propertyType, @encode(float)) == 0
+				) {
+				
+				return [NSValueTransformer valueTransformerForName:MTLNumberValueTransformerName];
+			}
+		}
+	}
+	
+	
+	if (!transformer) {
+		//判断类型是否匹配
+		
+		if (*(attributes->type) == *(@encode(id))) {
+			transformer = [NSValueTransformer mtl_validatingTransformerForClass:propertyClass ?: NSObject.class];
+		}else{
+			transformer = [self transformerForModelPropertiesOfObjCType:attributes->type] ?: [NSValueTransformer mtl_validatingTransformerForClass:NSValue.class];
+		}
+	}
+	
+	return transformer;
+}
+
+				
 
 - (MTLJSONAdapter *)JSONAdapterForModelClass:(Class)modelClass error:(NSError **)error {
 	NSParameterAssert(modelClass != nil);

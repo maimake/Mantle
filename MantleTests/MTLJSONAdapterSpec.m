@@ -665,4 +665,46 @@ it(@"should not automatically transform a property that conforms to MTLModel but
 	expect(@(error.code)).to(equal(@(MTLTransformerErrorHandlingErrorInvalidInput)));
 });
 
+#pragma mark - Custom JSONAdapter
+
+
+
+it(@"should change number to string and string to number", ^{
+	NSDictionary *dictionary = @{
+								 @"numString": @1234,
+								 @"strNumber": @"123abc45",
+								 @"realNum": @"123.456",
+								 @"intNum": @"12345678",
+								 @"doubleNum": @"123.456789",
+								 @"boolNum": @123,
+								 };
+	
+	NSError *error = nil;
+	[MTLJSONAdapter setStringNumberCompatible:YES];
+	MTLNumStrModel *model = [MTLJSONAdapter modelOfClass:MTLNumStrModel.class fromJSONDictionary:dictionary error:&error];
+	expect(model).notTo(beNil());
+	expect(model.numString).to(equal(@"1234"));
+	expect(model.strNumber).to(equal(@123));
+	expect(@(model.realNum)).to(equal(@(123.456f)));
+	expect(@(model.intNum)).to(equal(@12345678));
+	expect(@(model.doubleNum)).to(equal(@123.456789));
+	expect(@(model.boolNum)).to(equal(@YES));
+	
+});
+
+
+it(@"adjust json before to model", ^{
+	
+	NSDictionary *dictionary = @{
+								 @"name": @"Original",
+								 };
+	
+	
+	MTLAdjustModel *model = [MTLJSONAdapter modelOfClass:MTLAdjustModel.class fromJSONDictionary:dictionary error:nil];
+	expect(model).notTo(beNil());
+	expect(model.name).to(equal(@"Changed"));
+	
+});
+
+
 QuickSpecEnd

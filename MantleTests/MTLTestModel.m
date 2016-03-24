@@ -546,3 +546,24 @@ static NSUInteger modelVersion = 1;
 }
 
 @end
+
+
+
+@implementation MTLNumStrModel
+
++ (NSDictionary *)JSONKeyPathsByPropertyKey {
+	return [NSDictionary mtl_identityPropertyMapWithModel:self];
+}
+
+@end
+
+
+@implementation MTLAdjustModel
+
++ (NSDictionary *)JSONKeyPathsByPropertyKey {
+	return [NSDictionary mtl_identityPropertyMapWithModel:self];
+}
+
+@end
+
+

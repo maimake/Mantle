@@ -13,6 +13,8 @@
 
 NSString * const MTLURLValueTransformerName = @"MTLURLValueTransformerName";
 NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerName";
+NSString * const MTLNumberValueTransformerName = @"MTLNumberValueTransformerName";
+NSString * const MTLStringValueTransformerName = @"MTLStringValueTransformerName";
 
 @implementation NSValueTransformer (MTLPredefinedTransformerAdditions)
 
@@ -98,6 +100,29 @@ NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerNa
 			}];
 
 		[NSValueTransformer setValueTransformer:booleanValueTransformer forName:MTLBooleanValueTransformerName];
+		
+		
+		
+		MTLValueTransformer *numValueTransformer = [MTLValueTransformer
+														transformerUsingReversibleBlock:^ id (id value, BOOL *success, NSError **error) {
+															if ([value respondsToSelector:@selector(doubleValue)]) {
+																return @([value doubleValue]);
+															}else{
+																return nil;
+															}
+														}];
+		
+		[NSValueTransformer setValueTransformer:numValueTransformer forName:MTLNumberValueTransformerName];
+		
+		
+		
+		
+		MTLValueTransformer *stringValueTransformer = [MTLValueTransformer
+													transformerUsingReversibleBlock:^ id (id value, BOOL *success, NSError **error) {
+														return [value description];
+													}];
+		
+		[NSValueTransformer setValueTransformer:stringValueTransformer forName:MTLStringValueTransformerName];
 	}
 }
 

@@ -102,8 +102,27 @@ extern const NSInteger MTLJSONAdapterErrorExceptionThrown;
 /// Associated with the NSException that was caught.
 extern NSString * const MTLJSONAdapterThrownExceptionErrorKey;
 
+
+@class MTLJSONAdapter;
+@protocol MTLJSONAdapterCustom <NSObject>
+
+@optional
+
+//转换前可以微调下JSON
++(NSDictionary*)adjustJSONDictionary:(NSDictionary*)JSONDictionary beforeToModelClass:(Class)modelClass;
+
+//如果没有transform指定，就会进入这里，可以在这里指定一个
++(NSValueTransformer*)defaultTransformerForClass:(Class)modelClass propertyType:(const char*)propertyType propertyKey:(NSString*)propertyKey;
+
+@end
+
+
 /// Converts a MTLModel object to and from a JSON dictionary.
-@interface MTLJSONAdapter : NSObject
+@interface MTLJSONAdapter : NSObject <MTLJSONAdapterCustom>
+
++(void)setStringNumberCompatible:(BOOL)compatible;
++(BOOL)stringNumberCompatible;
+
 
 /// Attempts to parse a JSON dictionary into a model object.
 ///
