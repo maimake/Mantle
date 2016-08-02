@@ -48,6 +48,37 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 		if (![obj validateValue:&validatedValue forKey:key error:error]) return NO;
 
 		if (forceUpdate || value != validatedValue) {
+			
+			if (validatedValue == nil) {
+				
+				objc_property_t property = class_getProperty([obj class], key.UTF8String);
+				if (property) {
+					mtl_propertyAttributes *attributes = mtl_copyPropertyAttributes(property);
+					@onExit {
+						free(attributes);
+					};
+					
+					if (
+						*(attributes->type) == *(@encode(char)) ||
+						*(attributes->type) == *(@encode(int)) ||
+						*(attributes->type) == *(@encode(short)) ||
+						*(attributes->type) == *(@encode(long)) ||
+						*(attributes->type) == *(@encode(long long)) ||
+						*(attributes->type) == *(@encode(unsigned char)) ||
+						*(attributes->type) == *(@encode(unsigned int)) ||
+						*(attributes->type) == *(@encode(unsigned short)) ||
+						*(attributes->type) == *(@encode(unsigned long)) ||
+						*(attributes->type) == *(@encode(unsigned long long)) ||
+						*(attributes->type) == *(@encode(float)) ||
+						*(attributes->type) == *(@encode(double)) ||
+						*(attributes->type) == *(@encode(BOOL))
+						) {
+						//非对象的值，直接赋值数字0
+						validatedValue = @0;
+					}
+				}
+			}
+			
 			[obj setValue:validatedValue forKey:key];
 		}
 
